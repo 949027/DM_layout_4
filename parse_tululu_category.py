@@ -1,15 +1,16 @@
+import argparse
 import json
-import requests
 import re
 import os
 from urllib.parse import urljoin, urlsplit, unquote
-from bs4 import BeautifulSoup
-from pathvalidate import sanitize_filename
-import argparse
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+from pathvalidate import sanitize_filename
+import requests
 
-def download_image(soup, folder='images/'):
+
+def download_image(soup, images_path):
     url_image = urljoin(
         'https://tululu.org',
         soup.select_one('div.bookimage img')['src'],
@@ -19,7 +20,7 @@ def download_image(soup, folder='images/'):
 
     url_path_image = urlsplit(url_image)[2]
     filename = unquote(os.path.split(url_path_image)[1])
-    path = os.path.join(folder, filename)
+    path = Path(images_path, filename)
 
     with open(path, 'wb') as file:
         file.write(response.content)
@@ -38,10 +39,13 @@ def download_txt(soup, book_id, books_path):
     )
 
     clean_filename = f"{sanitize_filename(title_book)}.txt"
-    path = os.path.join(books_path, clean_filename)
+    path = Path(books_path, clean_filename)
 
     response = requests.get(book_url, params=payload)
     response.raise_for_status()
+
+    if response.history:
+        raise requests.HTTPError
 
     with open(path, 'w') as file:
         file.write(response.text)
@@ -71,9 +75,16 @@ def parse_book_description(soup):
     return book_description
 
 
-def main():
-    book_descriptions = []
+def save_descriptions(descriptions_path, book_descriptions):
+    with open(
+            f'{descriptions_path}/descriptions.json',
+            'w',
+            encoding='utf8'
+    ) as file:
+        json.dump(book_descriptions, file, ensure_ascii=False)
 
+
+def get_user_arguments():
     parser = argparse.ArgumentParser(
         description='Программа для скачивания книг с tululu.org'
     )
@@ -114,24 +125,30 @@ def main():
         const=True
     )
     args = parser.parse_args()
+    return args
 
-    books_path = Path(args.dest_folder, 'books')
-    images_path = Path(args.dest_folder, 'images')
-    descriptions_path = Path(args.dest_folder, args.json_path)
+
+def main():
+    books_descriptions = []
+    user_args = get_user_arguments()
+
+    books_path = Path(user_args.dest_folder, 'books')
+    images_path = Path(user_args.dest_folder, 'images')
+    descriptions_path = Path(user_args.dest_folder, user_args.json_path)
 
     os.makedirs(books_path, exist_ok=True)
     os.makedirs(images_path, exist_ok=True)
     os.makedirs(descriptions_path, exist_ok=True)
 
-    for page_number in range(args.start_page, args.end_page + 1):
+    for page_number in range(user_args.start_page, user_args.end_page + 1):
         url = f'https://tululu.org/l55/{page_number}'
         response = requests.get(url)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'lxml')
-        book_cards = soup.select('table.d_book')
+        books_cards = soup.select('table.d_book')
 
-        for book_card in book_cards:
+        for book_card in books_cards:
             book_id = re.search(r'\d+', book_card.select_one('a')['href'])[0]
             book_url = f'https://tululu.org/b{book_id}'
 
@@ -140,20 +157,18 @@ def main():
 
             soup = BeautifulSoup(response.text, 'lxml')
 
-            if not args.skip_txt:
-                download_txt(soup, book_id, books_path)
-            if not args.skip_imgs:
+            if not user_args.skip_txt:
+                try:
+                    download_txt(soup, book_id, books_path)
+                except requests.HTTPError:
+                    pass
+            if not user_args.skip_imgs:
                 download_image(soup, images_path)
 
             book_description = parse_book_description(soup)
-            book_descriptions.append(book_description)
+            books_descriptions.append(book_description)
 
-    with open(
-            f'{descriptions_path}/descriptions.json',
-            'w',
-            encoding='utf8'
-    ) as file:
-        json.dump(book_descriptions, file, ensure_ascii=False)
+    save_descriptions(descriptions_path, books_descriptions)
 
 
 if __name__ == '__main__':
