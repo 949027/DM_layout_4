@@ -40,9 +40,6 @@ def download_txt(book_title, book_id, books_path):
     response.raise_for_status()
     check_for_redirect(response)
 
-    if response.history:
-        raise requests.HTTPError
-
     with open(path, 'w') as file:
         file.write(response.text)
 
