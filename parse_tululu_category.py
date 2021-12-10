@@ -10,6 +10,11 @@ from pathvalidate import sanitize_filename
 import requests
 
 
+def check_for_redirect(response):
+    if response.history:
+        raise requests.HTTPError
+
+
 def download_image(soup, images_path):
     url_image = urljoin(
         'https://tululu.org',
@@ -17,6 +22,7 @@ def download_image(soup, images_path):
     )
     response = requests.get(url_image)
     response.raise_for_status()
+    check_for_redirect(response)
 
     url_path_image = urlsplit(url_image)[2]
     filename = unquote(os.path.split(url_path_image)[1])
@@ -43,6 +49,7 @@ def download_txt(soup, book_id, books_path):
 
     response = requests.get(book_url, params=payload)
     response.raise_for_status()
+    check_for_redirect(response)
 
     if response.history:
         raise requests.HTTPError
@@ -142,7 +149,10 @@ def main():
         url = f'https://tululu.org/l55/{page_number}'
         response = requests.get(url)
         response.raise_for_status()
-
+        try:
+            check_for_redirect(response)
+        except requests.HTTPError:
+            continue
         soup = BeautifulSoup(response.text, 'lxml')
         books_cards = soup.select('table.d_book')
 
@@ -161,10 +171,15 @@ def main():
                 except requests.HTTPError:
                     pass
             if not user_args.skip_imgs:
-                download_image(soup, images_path)
-
-            book_description = parse_book_description(soup)
-            books_descriptions.append(book_description)
+                try:
+                    download_image(soup, images_path)
+                except requests.HTTPError:
+                    pass
+            try:
+                book_description = parse_book_description(soup)
+                books_descriptions.append(book_description)
+            except requests.HTTPError:
+                pass
 
     save_descriptions(descriptions_path, books_descriptions)
 
