@@ -15,16 +15,12 @@ def check_for_redirect(response):
         raise requests.HTTPError
 
 
-def download_image(soup, images_path):
-    url_image = urljoin(
-        'https://tululu.org',
-        soup.select_one('div.bookimage img')['src'],
-    )
-    response = requests.get(url_image)
+def download_image(image_url, images_path):
+    response = requests.get(image_url)
     response.raise_for_status()
     check_for_redirect(response)
 
-    url_path_image = urlsplit(url_image)[2]
+    url_path_image = urlsplit(image_url)[2]
     filename = unquote(os.path.split(url_path_image)[1])
     path = Path(images_path, filename)
 
@@ -32,19 +28,12 @@ def download_image(soup, images_path):
         file.write(response.content)
 
 
-def download_txt(soup, book_id, books_path):
+def download_txt(book_title, book_id, books_path):
     book_url = "https://tululu.org/txt.php"
     payload = {'id': book_id}
 
-    title_tag = soup.select_one('h1')
-    title_text = title_tag.text
-    title, _ = title_text.split(sep='::')
-    title_book = '{}. {}'.format(
-        book_id,
-        title.strip(),
-    )
-
-    clean_filename = f"{sanitize_filename(title_book)}.txt"
+    filename = '{}. {}'.format(book_id, book_title)
+    clean_filename = f"{sanitize_filename(filename)}.txt"
     path = Path(books_path, clean_filename)
 
     response = requests.get(book_url, params=payload)
@@ -73,13 +62,18 @@ def parse_book_description(soup):
         comment.select_one('span.black').text for comment in comment_blocks
     ]
 
+    url_image = urljoin(
+        'https://tululu.org',
+        soup.select_one('div.bookimage img')['src'],
+    )
+
     book_description = {
         'title': title.strip(),
         'author': author.strip(),
         'genres': genres,
         'comments': comments
     }
-    return book_description
+    return book_description, url_image
 
 
 def save_descriptions(descriptions_path, book_descriptions):
@@ -165,21 +159,25 @@ def main():
 
             soup = BeautifulSoup(response.text, 'lxml')
 
+            try:
+                book_description, image_url = parse_book_description(soup)
+                books_descriptions.append(book_description)
+            except requests.HTTPError:
+                continue
+
             if not user_args.skip_txt:
                 try:
-                    download_txt(soup, book_id, books_path)
+                    download_txt(
+                        book_description['title'],
+                        book_id, books_path,
+                    )
                 except requests.HTTPError:
                     pass
             if not user_args.skip_imgs:
                 try:
-                    download_image(soup, images_path)
+                    download_image(image_url, images_path)
                 except requests.HTTPError:
                     pass
-            try:
-                book_description = parse_book_description(soup)
-                books_descriptions.append(book_description)
-            except requests.HTTPError:
-                pass
 
     save_descriptions(descriptions_path, books_descriptions)
 
