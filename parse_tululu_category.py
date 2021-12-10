@@ -152,11 +152,14 @@ def main():
 
         for book_card in books_cards:
             book_id = re.search(r'\d+', book_card.select_one('a')['href'])[0]
-            book_url = f'https://tululu.org/b{book_id}'
+            book_url = f'https://tululu.org/b{book_id}/'
 
             response = requests.get(book_url)
             response.raise_for_status()
-
+            try:
+                check_for_redirect(response)
+            except requests.HTTPError:
+                continue
             soup = BeautifulSoup(response.text, 'lxml')
 
             try:
