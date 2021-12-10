@@ -103,8 +103,7 @@ def get_user_arguments():
     parser.add_argument(
         '--skip_imgs',
         help='не скачивать картинки',
-        action='store_const',
-        const=True
+        action='store_true',
     )
     parser.add_argument(
         '--json_path',
@@ -121,8 +120,7 @@ def get_user_arguments():
     parser.add_argument(
         '--skip_txt',
         help='не скачивать книги',
-        action='store_const',
-        const=True
+        action='store_true',
     )
     args = parser.parse_args()
     return args
