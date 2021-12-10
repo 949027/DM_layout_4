@@ -20,8 +20,8 @@ def download_image(image_url, images_path):
     response.raise_for_status()
     check_for_redirect(response)
 
-    url_path_image = urlsplit(image_url)[2]
-    filename = unquote(os.path.split(url_path_image)[1])
+    image_path_url = urlsplit(image_url).path
+    filename = unquote(os.path.split(image_path_url)[1])
     path = Path(images_path, filename)
 
     with open(path, 'wb') as file:
