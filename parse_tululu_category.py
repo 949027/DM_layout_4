@@ -98,7 +98,6 @@ def get_user_arguments():
     parser.add_argument(
         '--end_page',
         help='последняя страница',
-        default=10,
         type=int
     )
     parser.add_argument(
@@ -127,9 +126,21 @@ def get_user_arguments():
     return args
 
 
+def get_number_last_page():
+    url = f'https://tululu.org/l55/'
+    response = requests.get(url)
+    response.raise_for_status()
+    check_for_redirect(response)
+
+    soup = BeautifulSoup(response.text, 'lxml')
+    end_page = soup.select('table a.npage')[-1].contents[0]
+    return int(end_page)
+
+
 def main():
     books_descriptions = []
     user_args = get_user_arguments()
+    end_page = user_args.end_page or get_number_last_page()
 
     books_path = Path(user_args.dest_folder, 'books')
     images_path = Path(user_args.dest_folder, 'images')
@@ -139,8 +150,8 @@ def main():
     os.makedirs(images_path, exist_ok=True)
     os.makedirs(descriptions_path, exist_ok=True)
 
-    for page_number in range(user_args.start_page, user_args.end_page + 1):
-        url = f'https://tululu.org/l55/{page_number}'
+    for page_number in range(user_args.start_page, end_page + 1):
+        url = f'https://tululu.org/l55/{page_number}/'
         response = requests.get(url)
         response.raise_for_status()
         try:
