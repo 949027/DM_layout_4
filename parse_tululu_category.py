@@ -164,31 +164,25 @@ def main():
 
             response = requests.get(book_url)
             response.raise_for_status()
+
             try:
                 check_for_redirect(response)
-            except requests.HTTPError:
-                continue
-            soup = BeautifulSoup(response.text, 'lxml')
+                soup = BeautifulSoup(response.text, 'lxml')
 
-            try:
                 book_description, image_url = parse_book_description(soup)
                 books_descriptions.append(book_description)
-            except requests.HTTPError:
-                continue
 
-            if not user_args.skip_txt:
-                try:
+                if not user_args.skip_txt:
                     download_txt(
                         book_description['title'],
-                        book_id, books_path,
+                        book_id,
+                        books_path,
                     )
-                except requests.HTTPError:
-                    pass
-            if not user_args.skip_imgs:
-                try:
+                if not user_args.skip_imgs:
                     download_image(image_url, images_path)
-                except requests.HTTPError:
-                    pass
+
+            except requests.HTTPError:
+                pass
 
     save_descriptions(descriptions_path, books_descriptions)
 
