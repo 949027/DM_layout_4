@@ -95,7 +95,7 @@ def get_user_arguments():
     parser.add_argument(
         '--end_page',
         help='последняя страница',
-        default=get_number_last_page(),
+        default=get_last_page_number(),
         type=int,
     )
     parser.add_argument(
@@ -124,7 +124,7 @@ def get_user_arguments():
     return args
 
 
-def get_number_last_page():
+def get_last_page_number():
     url = f'https://tululu.org/l55/'
     response = requests.get(url)
     response.raise_for_status()
