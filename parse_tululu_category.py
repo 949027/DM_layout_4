@@ -130,7 +130,7 @@ def get_number_last_page():
     check_for_redirect(response)
 
     soup = BeautifulSoup(response.text, 'lxml')
-    end_page = soup.select('table a.npage')[-1].contents[0]
+    end_page = soup.select_one('table a.npage:last-child').contents[0]
     return int(end_page)
 
 
