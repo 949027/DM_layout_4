@@ -68,9 +68,10 @@ def parse_book_description(soup):
         'title': title.strip(),
         'author': author.strip(),
         'genres': genres,
-        'comments': comments
+        'comments': comments,
+        'cover': url_image
     }
-    return book_description, url_image
+    return book_description
 
 
 def save_descriptions(descriptions_path, book_descriptions):
@@ -169,7 +170,7 @@ def main():
                 check_for_redirect(response)
                 soup = BeautifulSoup(response.text, 'lxml')
 
-                book_description, image_url = parse_book_description(soup)
+                book_description = parse_book_description(soup)
                 books_descriptions.append(book_description)
 
                 if not user_args.skip_txt:
@@ -179,6 +180,7 @@ def main():
                         books_path,
                     )
                 if not user_args.skip_imgs:
+                    image_url = book_description['cover']
                     download_image(image_url, images_path)
 
             except requests.HTTPError:
