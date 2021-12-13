@@ -95,7 +95,8 @@ def get_user_arguments():
     parser.add_argument(
         '--end_page',
         help='последняя страница',
-        type=int
+        default=get_number_last_page(),
+        type=int,
     )
     parser.add_argument(
         '--skip_imgs',
@@ -106,13 +107,13 @@ def get_user_arguments():
         '--json_path',
         help='путь к файлу с описанием книг',
         action='store',
-        default=''
+        default='',
     )
     parser.add_argument(
         '--dest_folder',
         help='путь к каталогу с результатами',
         action='store',
-        default=''
+        default='',
     )
     parser.add_argument(
         '--skip_txt',
@@ -137,7 +138,6 @@ def get_number_last_page():
 def main():
     books_descriptions = []
     user_args = get_user_arguments()
-    end_page = user_args.end_page or get_number_last_page()
 
     books_path = Path(user_args.dest_folder, 'books')
     images_path = Path(user_args.dest_folder, 'images')
@@ -147,7 +147,7 @@ def main():
     os.makedirs(images_path, exist_ok=True)
     os.makedirs(descriptions_path, exist_ok=True)
 
-    for page_number in range(user_args.start_page, end_page + 1):
+    for page_number in range(user_args.start_page, user_args.end_page + 1):
         url = f'https://tululu.org/l55/{page_number}/'
         response = requests.get(url)
         response.raise_for_status()
